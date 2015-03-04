@@ -1,0 +1,6 @@
+Taskings
+1. Scan for ALL NTFS entires, not just the one
+
+Desired
+1. Create mousehover event to show datetime of location, possibly in the picture drawn.
+2. Create functions to calculate the time bounds of the square

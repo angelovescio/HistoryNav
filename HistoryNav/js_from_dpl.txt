@@ -1,0 +1,176 @@
+﻿
+function randInt(lo, hi) {
+    var n = Math.floor(Math.random() * (hi - lo + 1)) + lo;
+    return n;
+}
+
+function lookupBlockByName(name) {
+    for(var i=0;i < blocks.length;i++)
+        if(blocks[i].name == name)
+            return blocks[i];
+    return null;
+}
+
+function getFromData() {
+    for(var i=0;i < blocks_raw.length;i++) {
+        console.log("Loaded block '" + blocks_raw[i] + "'");
+        blocks.push(new Block(blocks_raw[i], Math.random() * 1000, Math.random() * 800));
+    }
+    
+    for(var i=0;i < connections_raw.length;i++) {
+        var blockA = lookupBlockByName(connections_raw[i][0]);
+        var blockB = lookupBlockByName(connections_raw[i][1]);
+        connections.push(new Connection(blockA, blockB));
+    }
+}
+
+function randomBlocks() {
+    for(var i=0;i < 5;i++) {
+        var block = new Block(Math.random() * 1000, Math.random() * 800);
+        blocks.push(block);
+    }
+    
+    for(var i=0;i < 8;i++) {
+        var blockA = blocks[randInt(0, blocks.length - 1)];
+        var blockB = blocks[randInt(0, blocks.length - 1)];
+        if(blockA == blockB)
+            continue;
+        console.log(blockA + " " + blockB);
+        var connection = new Connection(blockA, blockB);
+        connections.push(connection);
+    }
+}
+
+var blocks = [];
+var connections = [];
+var lastTime = 0;
+var iterations = 0;
+
+function mainLoop() {
+    var curTime = (new Date()).getTime();
+    var td = curTime - lastTime;
+    lastTime = curTime;
+    
+    iterations++;
+    
+    // Draw background
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    
+    // Update blocks
+    for(var i=0;i < connections.length;i++) {
+        connections[i].update(td);
+    }
+    for(var i=0;i < blocks.length - 1;i++)
+        for(var j=i+1;j < blocks.length;j++) {
+            var dx = blocks[i].x - blocks[j].x;
+            var dy = blocks[i].y - blocks[j].y;
+            var d2 = dx * dx + dy * dy;
+            var d = Math.sqrt(d2);
+            var p = td * 5.0 / d2;
+            if(p > 200) p = 200;
+            blocks[i].vx += p * (dx / d);
+            blocks[i].vy += p * (dy / d);
+            blocks[j].vx += -p * (dx / d);
+            blocks[j].vy += -p * (dy / d);
+        }
+    for(var i=0;i < blocks.length;i++) {
+        blocks[i].update(td);
+    }
+    
+    // Draw blocks
+//    if(iterations < 1000)
+//        return;
+    ctx.save();
+    ctx.translate(-translationX, -translationY);
+    for(var i=0;i < connections.length;i++)
+        connections[i].draw(ctx);
+    for(var i=0;i < blocks.length;i++)
+        blocks[i].draw(ctx);
+    ctx.restore();
+}
+
+var mouseX, mouseY;
+var translationX=0, translationY=0;
+var origX, origY;
+var dragging = false;
+
+function mouseDown(evt) {
+    mouseX = evt.clientX;
+    mouseY = evt.clientY;
+    dragging = true;
+    origX = translationX;
+    origY = translationY;
+}
+
+function mouseMove(evt) {
+    if(!dragging)
+        return;
+    translationX = origX + mouseX - evt.clientX;
+    translationY = origY + mouseY - evt.clientY;
+}
+
+function mouseUp() {
+    dragging = false;
+}
+
+Block = Class.create({
+    initialize: function(name, x, y) {
+        this.name = name;
+        this.x = x;
+        this.y = y;
+        this.vx = 0;
+        this.vy = 0;
+    },
+    
+    update: function(td) {
+        this.x += this.vx * td;
+        this.y += this.vy * td;
+        //console.log(this.x + " " + this.y);
+        this.vx *= 0.90;
+        this.vy *= 0.90;
+    },
+    
+    draw: function(ctx) {
+        ctx.fillStyle = "#800";
+        ctx.fillRect(this.x - 8, this.y - 8, 16, 16);
+        ctx.fillStyle = "#fff";
+        ctx.fillText(this.name, this.x, this.y)
+    }
+});
+
+Connection = Class.create({
+    initialize: function(blockA, blockB) {
+        this.blockA = blockA;
+        this.blockB = blockB;
+    },
+    
+    update: function(td) {
+        var dx = this.blockA.x - this.blockB.x;
+        var dy = this.blockA.y - this.blockB.y;
+        var d2 = dx * dx + dy * dy;
+        var d = Math.sqrt(d2);
+        
+        var strength = (0.00000010) * d;      
+        this.blockA.vx += -td * strength * dx;
+        this.blockB.vx += td * strength * dx;
+        this.blockA.vy += -td * strength * dy;
+        this.blockB.vy += td * strength * dy;
+        
+        //this.blockA.vx += -1 * this.blockA.vx * 0.01;
+        //this.blockA.vy += -1 * this.blockA.vy * 0.01;
+        //this.blockB.vx += -1 * this.blockB.vx * 0.01;
+        //this.blockB.vy += -1 * this.blockB.vy * 0.01;
+    },
+    
+    draw: function(ctx) {
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "#999";
+        ctx.beginPath();
+        ctx.moveTo(this.blockA.x, this.blockA.y);
+        ctx.lineTo(this.blockB.x, this.blockB.y);
+        ctx.stroke();
+    }
+});
+
+
